@@ -1,12 +1,15 @@
 # Docker Cheat Sheet
 
-NOTE: This used to be a gist that continually expanded.  It's now a GitHub project because it's considerably easier for other people to edit, fix and expand on Docker using Github.  Just click  [README.md](https://github.com/wsargent/docker-cheat-sheet/blob/master/README.md), and then on the "writing pen" icon on the right to edit.
+**Want to improve this cheat sheet?  See the [Contributing](#contributing) section!**
+
+## Table of Contents
 
 * [Why](#why)
 * [Prerequisites](#prerequisites)
 * [Installation](#installation)
 * [Containers](#containers)
 * [Images](#images)
+* [Networks](#networks)
 * [Registry and Repository](#registry--repository)
 * [Dockerfile](#dockerfile)
 * [Layers](#layers)
@@ -16,6 +19,7 @@ NOTE: This used to be a gist that continually expanded.  It's now a GitHub proje
 * [Best Practices](#best-practices)
 * [Security](#security)
 * [Tips](#tips)
+* [Contributing](#contributing)
 
 ## Why
 
@@ -23,7 +27,7 @@ NOTE: This used to be a gist that continually expanded.  It's now a GitHub proje
 
 Developers can get going quickly by starting with one of the 13,000+ apps available on Docker Hub. Docker manages and tracks changes and dependencies, making it easier for sysadmins to understand how the apps that developers build work. And with Docker Hub, developers can automate their build pipeline and share artifacts with collaborators through public or private repositories.
 
-Docker helps developers build and ship higher-quality applications, faster." -- [What is Docker](https://www.docker.com/whatisdocker/#copy1)
+Docker helps developers build and ship higher-quality applications, faster." -- [What is Docker](https://www.docker.com/what-docker#copy1)
 
 ## Prerequisites
 
@@ -53,9 +57,11 @@ If you are a complete Docker newbie, you should follow the [series of tutorials]
 
 ### Mac OS X
 
-Download and install [Docker Toolbox](https://www.docker.com/toolbox).  If that doesn't work, see the [installation instructions](https://docs.docker.com/installation/mac/).
+Download and install [Docker Toolbox](https://www.docker.com/products/docker-toolbox).  If that doesn't work, see the [installation instructions](https://docs.docker.com/installation/mac/).
 
-Docker used to use boot2docker, but you should be using docker machine now. The Docker website has instructions on [how to upgrade](https://docs.docker.com/installation/mac/#migrate-from-boot2docker).  If you have an existing docker instance, you can also install the [Docker Machine](https://docs.docker.com/machine/install-machine/) binaries directly.
+> **NOTE** If you have an existing docker toolbox, you might think you can upgrade [Docker Machine](https://docs.docker.com/machine/install-machine/) binaries directly (either from URL or `docker-machine upgrade default`) and it will take care of itself.  This is not going to help -- `docker-machine` will be `1.10.3` while `docker` is still `1.8.3` or whatever your previous version is.
+>
+> You are much better off using Docker Toolbox DMG file to upgrade, which will take care of all the binaries at once.
 
 Once you've installed Docker Toolbox, install a VM with Docker Machine using the VirtualBox provider:
 
@@ -83,25 +89,27 @@ If you are a complete Docker newbie, you should probably follow the [series of t
 
 * [`docker create`](https://docs.docker.com/reference/commandline/create) creates a container but does not start it.
 * [`docker run`](https://docs.docker.com/reference/commandline/run) creates and starts a container in one operation.
-* [`docker stop`](https://docs.docker.com/reference/commandline/stop) stops it.
-* [`docker start`](https://docs.docker.com/reference/commandline/start) will start it again.
-* [`docker restart`](https://docs.docker.com/reference/commandline/restart) restarts a container.
 * [`docker rm`](https://docs.docker.com/reference/commandline/rm) deletes a container.
-* [`docker kill`](https://docs.docker.com/reference/commandline/kill) sends a SIGKILL to a container.
-* [`docker attach`](https://docs.docker.com/reference/commandline/attach) will connect to a running container.
-* [`docker wait`](https://docs.docker.com/reference/commandline/wait) blocks until container stops.
-
-If you want to run and then interact with a container, `docker start`, then spawn a shell as described in [Executing Commands](https://github.com/wsargent/docker-cheat-sheet/#executing-commands).
+* [`docker update`](https://docs.docker.com/engine/reference/commandline/update/) updates a container's resource limits.
 
 If you want a transient container, `docker run --rm` will remove the container after it stops.
 
+If you want to map a directory on the host to a docker container, `docker run -v $HOSTDIR:$DOCKERDIR`.  Also see [Volumes](https://github.com/wsargent/docker-cheat-sheet/#volumes).
+
 If you want to remove also the volumes associated with the container, the deletion of the container must include the -v switch like in `docker rm -v`.
 
-If you want to poke around in an image, `docker run -t -i <myimage> <myshell>` to open a tty.
+There's also a [logging driver](https://docs.docker.com/engine/admin/logging/overview/) available for individual containers in docker 1.10.  To run docker with a custom log driver (i.e. to syslog), use `docker run --log-driver=syslog`
 
-If you want to poke around in a running container, `docker exec -t -i <mycontainer> <myshell>` to open a tty.
+## Starting and Stopping
 
-If you want to map a directory on the host to a docker container, `docker run -v $HOSTDIR:$DOCKERDIR`.  Also see [Volumes](https://github.com/wsargent/docker-cheat-sheet/#volumes).
+* [`docker start`](https://docs.docker.com/reference/commandline/start) starts a container so it is running.
+* [`docker stop`](https://docs.docker.com/reference/commandline/stop) stops a running container.
+* [`docker restart`](https://docs.docker.com/reference/commandline/restart) stops and starts a container.
+* [`docker pause`](https://docs.docker.com/engine/reference/commandline/pause/) pauses a running container, "freezing" it in place.
+* [`docker unpause`](https://docs.docker.com/engine/reference/commandline/unpause/) will unpause a running container.
+* [`docker wait`](https://docs.docker.com/reference/commandline/wait) blocks until running container stops.
+* [`docker kill`](https://docs.docker.com/reference/commandline/kill) sends a SIGKILL to a running container.
+* [`docker attach`](https://docs.docker.com/reference/commandline/attach) will connect to a running container.
 
 If you want to integrate a container with a [host process manager](https://docs.docker.com/articles/host_integration/), start the daemon with `-r=false` then use `docker start -a`.
 
@@ -112,7 +120,7 @@ Restart policies on crashed docker instances are [covered here](http://container
 ### Info
 
 * [`docker ps`](https://docs.docker.com/reference/commandline/ps) shows running containers.
-* [`docker logs`](https://docs.docker.com/reference/commandline/logs) gets logs from container.
+* [`docker logs`](https://docs.docker.com/reference/commandline/logs) gets logs from container.  (You can use a custom log driver, but logs is only available for `json-file` and `journald` in 1.10)
 * [`docker inspect`](https://docs.docker.com/reference/commandline/inspect) looks at all the info on a container (including IP address).
 * [`docker events`](https://docs.docker.com/reference/commandline/events) gets events from container.
 * [`docker port`](https://docs.docker.com/reference/commandline/port) shows public facing port of container.
@@ -121,6 +129,8 @@ Restart policies on crashed docker instances are [covered here](http://container
 * [`docker diff`](https://docs.docker.com/reference/commandline/diff) shows changed files in the container's FS.
 
 `docker ps -a` shows running and stopped containers.
+
+`docker stats --all` shows a running list of containers.
 
 ### Import / Export
 
@@ -135,14 +145,14 @@ To enter a running container, attach a new shell process to a running container 
 
 ## Images
 
-Images are just [templates for docker containers](https://docs.docker.com/introduction/understanding-docker/#how-does-a-docker-image-work).
+Images are just [templates for docker containers](https://docs.docker.com/engine/understanding-docker/#how-does-a-docker-image-work).
 
 ### Lifecycle
 
 * [`docker images`](https://docs.docker.com/reference/commandline/images) shows all images.
 * [`docker import`](https://docs.docker.com/reference/commandline/import) creates an image from a tarball.
 * [`docker build`](https://docs.docker.com/reference/commandline/build) creates image from Dockerfile.
-* [`docker commit`](https://docs.docker.com/reference/commandline/commit) creates image from a container.
+* [`docker commit`](https://docs.docker.com/reference/commandline/commit) creates image from a container, pausing it temporarily if it is running.
 * [`docker rmi`](https://docs.docker.com/reference/commandline/rmi) removes an image.
 * [`docker load`](https://docs.docker.com/reference/commandline/load) loads an image from a tar archive as STDIN, including images and tags (as of 0.7).
 * [`docker save`](https://docs.docker.com/reference/commandline/save) saves an image to a tar archive stream to STDOUT with all parent layers, tags & versions (as of 0.7).
@@ -152,13 +162,49 @@ Images are just [templates for docker containers](https://docs.docker.com/introd
 * [`docker history`](https://docs.docker.com/reference/commandline/history) shows history of image.
 * [`docker tag`](https://docs.docker.com/reference/commandline/tag) tags an image to a name (local or registry).
 
+### Cleaning up
+
+While you can use the `docker rmi` command to remove specific images, there's a tool called [docker-gc](https://github.com/spotify/docker-gc) that will clean up images that are no longer used by any containers in a safe manner.
+
+## Networks
+
+Docker has a [networks](https://docs.docker.com/engine/userguide/networking/dockernetworks/) feature.  Not much is known about it, so this is a good place to expand the cheat sheet.  There is a note saying that it's a good way to configure docker containers to talk to each other without using ports.  See [working with networks](https://docs.docker.com/engine/userguide/networking/work-with-networks/) for more details.
+
+### Lifecycle
+
+* [`docker network create`](https://docs.docker.com/engine/reference/commandline/network_create/)
+* [`docker network rm`](https://docs.docker.com/engine/reference/commandline/network_rm/)
+
+### Info
+
+* [`docker network ls`](https://docs.docker.com/engine/reference/commandline/network_ls/)
+* [`docker network inspect`](https://docs.docker.com/engine/reference/commandline/network_inspect/)
+
+### Connection
+
+* [`docker network connect`](https://docs.docker.com/engine/reference/commandline/network_connect/)
+* [`docker network disconnect`](https://docs.docker.com/engine/reference/commandline/network_disconnect/)
+
+You can specify a [specific IP address for a container](https://blog.jessfraz.com/post/ips-for-all-the-things/):
+
+```
+# create a new bridge network with your subnet and gateway for your ip block
+docker network create --subnet 203.0.113.0/24 --gateway 203.0.113.254 iptastic
+
+# run a nginx container with a specific ip in that block
+$ docker run --rm -it --net iptastic --ip 203.0.113.2 nginx
+
+# curl the ip from any other place (assuming this is a public ip block duh)
+$ curl 203.0.113.2
+```
+
 ## Registry & Repository
 
 A repository is a *hosted* collection of tagged images that together create the file system for a container.
 
 A registry is a *host* -- a server that stores repositories and provides an HTTP API for [managing the uploading and downloading of repositories](https://docs.docker.com/userguide/dockerrepos/).
 
-Docker.com hosts its own [index](https://registry.hub.docker.com/) to a central registry which contains a large number of repositories.  Having said that, the central docker registry [does not do a good job of verifying images](https://titanous.com/posts/docker-insecurity) and should be avoided if you're worried about security.
+Docker.com hosts its own [index](https://hub.docker.com/) to a central registry which contains a large number of repositories.  Having said that, the central docker registry [does not do a good job of verifying images](https://titanous.com/posts/docker-insecurity) and should be avoided if you're worried about security.
 
 * [`docker login`](https://docs.docker.com/reference/commandline/login) to login to a registry.
 * [`docker search`](https://docs.docker.com/reference/commandline/search) searches registry for image.
@@ -167,10 +213,9 @@ Docker.com hosts its own [index](https://registry.hub.docker.com/) to a central 
 
 ### Run local registry
 
-[Registry implementation](https://github.com/docker/docker-registry) has an official image for basic setup that can be launched with
-[`docker run -p 5000:5000 registry`](https://github.com/docker/docker-registry#quick-start)
-Note that this installation does not have any authorization controls. You may use option `-P -p 127.0.0.1:5000:5000` to limit connections to localhost only.
-In order to push to this repository tag image with `repositoryHostName:5000/imageName` then push this tag.
+You can run a local registry by using the [docker distribution](https://github.com/docker/distribution) project and looking at the [local deploy](https://github.com/docker/distribution/blob/master/docs/deploying.md) instructions.  
+
+Also see the [mailing list](https://groups.google.com/a/dockerproject.org/forum/#!forum/distribution).
 
 ## Dockerfile
 
@@ -178,28 +223,39 @@ In order to push to this repository tag image with `repositoryHostName:5000/imag
 
 ### Instructions
 
-* [.dockerignore](https://docs.docker.com/reference/builder/#the-dockerignore-file)
-* [FROM](https://docs.docker.com/reference/builder/#from)
-* [MAINTAINER](https://docs.docker.com/reference/builder/#maintainer)
-* [RUN](https://docs.docker.com/reference/builder/#run)
-* [CMD](https://docs.docker.com/reference/builder/#cmd)
-* [EXPOSE](https://docs.docker.com/reference/builder/#expose)
-* [ENV](https://docs.docker.com/reference/builder/#env)
-* [ADD](https://docs.docker.com/reference/builder/#add)
-* [COPY](https://docs.docker.com/reference/builder/#copy)
-* [ENTRYPOINT](https://docs.docker.com/reference/builder/#entrypoint)
-* [VOLUME](https://docs.docker.com/reference/builder/#volume)
-* [USER](https://docs.docker.com/reference/builder/#user)
-* [WORKDIR](https://docs.docker.com/reference/builder/#workdir)
-* [ONBUILD](https://docs.docker.com/reference/builder/#onbuild)
+* [.dockerignore](https://docs.docker.com/reference/builder/#dockerignore-file)
+* [FROM](https://docs.docker.com/reference/builder/#from) Sets the Base Image for subsequent instructions.
+* [MAINTAINER](https://docs.docker.com/reference/builder/#maintainer) Set the Author field of the generated images..
+* [RUN](https://docs.docker.com/reference/builder/#run) execute any commands in a new layer on top of the current image and commit the results.
+* [CMD](https://docs.docker.com/reference/builder/#cmd) provide defaults for an executing container.
+* [EXPOSE](https://docs.docker.com/reference/builder/#expose) informs Docker that the container listens on the specified network ports at runtime.  NOTE: does not actually make ports accessible.
+* [ENV](https://docs.docker.com/reference/builder/#env) sets environment variable.
+* [ADD](https://docs.docker.com/reference/builder/#add) copies new files, directories or remote file to container.  Invalidates caches. Avoid `ADD` and use `COPY` instead.
+* [COPY](https://docs.docker.com/reference/builder/#copy) copies new files or directories to container.
+* [ENTRYPOINT](https://docs.docker.com/reference/builder/#entrypoint) configures a container that will run as an executable.
+* [VOLUME](https://docs.docker.com/reference/builder/#volume) creates a mount point for externally mounted volumes or other containers.
+* [USER](https://docs.docker.com/reference/builder/#user) sets the user name for following RUN / CMD / ENTRYPOINT commands.
+* [WORKDIR](https://docs.docker.com/reference/builder/#workdir) sets the working directory.
+* [ARG](https://docs.docker.com/engine/reference/builder/#arg) defines a build-time variable.
+* [ONBUILD](https://docs.docker.com/reference/builder/#onbuild) adds a trigger instruction when the image is used as the base for another build.
+* [STOPSIGNAL](https://docs.docker.com/engine/reference/builder/#stopsignal) sets the system call signal that will be sent to the container to exit.
+* [LABEL](https://docs.docker.com/engine/userguide/labels-custom-metadata/) apply key/value metadata to your images, containers, or daemons.  
 
 ### Tutorial
 
 * [Flux7's Dockerfile Tutorial](http://flux7.com/blogs/docker/docker-tutorial-series-part-3-automation-is-the-word-using-dockerfile/)
 
+### Examples
+
+* [Examples](https://docs.docker.com/reference/builder/#dockerfile-examples)
+* [Best practices for writing Dockerfiles](https://docs.docker.com/articles/dockerfile_best-practices/)
+* [Michael Crosby](http://crosbymichael.com/) has some more [Dockerfiles best practices](http://crosbymichael.com/dockerfile-best-practices.html) / [take 2](http://crosbymichael.com/dockerfile-best-practices-take-2.html).
+* [Building Good Docker Images](http://jonathan.bergknoff.com/journal/building-good-docker-images) / [Building Better Docker Images](http://jonathan.bergknoff.com/journal/building-better-docker-images)
+* [Managing Container Configuration with Metadata](https://speakerdeck.com/garethr/managing-container-configuration-with-metadata)
+
 ## Layers
 
-The versioned filesystem in Docker is based on layers.  They're like [git commits or changesets for filesystems](https://docs.docker.com/terms/layer/).
+The versioned filesystem in Docker is based on layers.  They're like [git commits or changesets for filesystems](https://docs.docker.com/engine/userguide/storagedriver/imagesandcontainers/).
 
 Note that if you're using [aufs](https://en.wikipedia.org/wiki/Aufs) as your filesystem, Docker does not always remove data volumes containers layers when you delete a container!  See [PR 8484](https://github.com/docker/docker/pull/8484) for more details.
 
@@ -238,6 +294,16 @@ If you want to link across docker hosts then you should look at [Swarm](https://
 
 Docker volumes are [free-floating filesystems](https://docs.docker.com/userguide/dockervolumes/).  They don't have to be connected to a particular container.  You should use volumes mounted from [data-only containers](https://medium.com/@ramangupta/why-docker-data-containers-are-good-589b3c6c749e) for portability.
 
+### Lifecycle
+
+* [`docker volume create`](https://docs.docker.com/engine/reference/commandline/volume_create/)
+* [`docker volume rm`](https://docs.docker.com/engine/reference/commandline/volume_rm/)
+
+### Info
+
+* [`docker volume ls`](https://docs.docker.com/engine/reference/commandline/volume_ls/)
+* [`docker volume inspect`](https://docs.docker.com/engine/reference/commandline/volume_inspect/)
+
 Volumes are useful in situations where you can't use links (which are TCP/IP only).  For instance, if you need to have two docker instances communicate by leaving stuff on the filesystem.
 
 You can mount them in several docker containers at once, using `docker run --volumes-from`.
@@ -246,17 +312,13 @@ Because volumes are isolated filesystems, they are often used to store state fro
 
 See [advanced volumes](http://crosbymichael.com/advanced-docker-volumes.html) for more details.  Container42 is [also helpful](http://container42.com/2014/11/03/docker-indepth-volumes/).
 
-For an easy way to clean abandoned volumes, see [docker-cleanup-volumes](https://github.com/chadoe/docker-cleanup-volumes).
-
-As of 1.9, there are [volume specific commands](http://docs.docker.com/engine/reference/commandline/volume_ls/) like create, ls, and rm. (Thus no need for the above script to clean abandoned volumes - see [delete dangling volumes](#delete-dangling-volumes) in the quick reference, below.)
-
 As of 1.3, you can [map MacOS host directories as docker volumes](https://docs.docker.com/userguide/dockervolumes/#mount-a-host-directory-as-a-data-volume) through boot2docker:
 
 ```
 docker run -v /Users/wsargent/myapp/src:/src
 ```
 
-You can also use remote NFS volumes if you're [feeling brave](http://www.tech-d.net/2014/03/29/docker-quicktip-4-remote-volumes/).
+You can also use remote NFS volumes if you're [feeling brave](https://web.archive.org/web/20150306065158/http://www.tech-d.net/2014/03/29/docker-quicktip-4-remote-volumes/).
 
 You may also consider running data-only containers as described [here](http://container42.com/2013/12/16/persistent-volumes-with-docker-container-as-volume-pattern/) to provide some data portability.
 
@@ -264,18 +326,19 @@ You may also consider running data-only containers as described [here](http://co
 
 Exposing incoming ports through the host container is [fiddly but doable](https://docs.docker.com/reference/run/#expose-incoming-ports).
 
-
-The fastest way is to map the container port to the host port (only using localhost interface) using `-p`:
+This is done by mapping the container port to the host port (only using localhost interface) using `-p`:
 
 ```
 docker run -p 127.0.0.1:$HOSTPORT:$CONTAINERPORT --name CONTAINER -t someimage
 ```
 
-If you don't want to use the `-p` option on the command line, you can persist port forwarding by using [EXPOSE](https://docs.docker.com/reference/builder/#expose):
+You can tell Docker that the container listens on the specified network ports at runtime by using [EXPOSE](https://docs.docker.com/reference/builder/#expose):
 
 ```
 EXPOSE <CONTAINERPORT>
 ```
+
+But note that EXPOSE does not expose the port itself, only `-p` will do that.
 
 If you're running Docker in Virtualbox, you then need to forward the port there as well, using [forwarded_port](https://docs.vagrantup.com/v2/networking/forwarded_ports.html).  It can be useful to define something in Vagrantfile to expose a range of ports so that you can dynamically map them:
 
@@ -297,12 +360,6 @@ If you forget what you mapped the port to on the host container, use `docker por
 docker port CONTAINER $CONTAINERPORT
 ```
 
-### Examples
-
-* [Examples](https://docs.docker.com/reference/builder/#dockerfile-examples)
-* [Best practices for writing Dockerfiles](https://docs.docker.com/articles/dockerfile_best-practices/)
-* [Michael Crosby](http://crosbymichael.com/) has some more [Dockerfiles best practices](http://crosbymichael.com/dockerfile-best-practices.html) / [take 2](http://crosbymichael.com/dockerfile-best-practices-take-2.html).
-
 ## Best Practices
 
 This is where general Docker best practices and war stories go:
@@ -310,21 +367,27 @@ This is where general Docker best practices and war stories go:
 * [The Rabbit Hole of Using Docker in Automated Tests](http://gregoryszorc.com/blog/2014/10/16/the-rabbit-hole-of-using-docker-in-automated-tests/)
 * [Bridget Kromhout](https://twitter.com/bridgetkromhout) has a useful blog post on [running Docker in production](http://sysadvent.blogspot.co.uk/2014/12/day-1-docker-in-production-reality-not.html) at Dramafever.  
 * There's also a best practices [blog post](http://developers.lyst.com/devops/2014/12/08/docker/) from Lyst.
-* [A Docker Dev Environment in 24 Hours!](http://blog.relateiq.com/a-docker-dev-environment-in-24-hours-part-2-of-2/)
-* [Building a Development Environment With Docker](http://tersesystems.com/2013/11/20/building-a-development-environment-with-docker/)
-* [Discourse in a Docker Container](http://samsaffron.com/archive/2013/11/07/discourse-in-a-docker-container)
+* [A Docker Dev Environment in 24 Hours!](https://engineering.salesforceiq.com/2013/11/05/a-docker-dev-environment-in-24-hours-part-2-of-2.html)
+* [Building a Development Environment With Docker](https://tersesystems.com/2013/11/20/building-a-development-environment-with-docker/)
+* [Discourse in a Docker Container](https://samsaffron.com/archive/2013/11/07/discourse-in-a-docker-container)
 
 ## Security
 
-This is where security tips about Docker go.
+This is where security tips about Docker go.  The [security](https://docs.docker.com/engine/articles/security/) page goes into more detail.
 
-If you are in the `docker` group, you effectively [have root access](http://reventlov.com/advisories/using-the-docker-command-to-root-the-host).
+First things first: Docker runs as root.  If you are in the `docker` group, you effectively [have root access](http://reventlov.com/advisories/using-the-docker-command-to-root-the-host).  If you expose the docker unix socket to a container, you are giving the container [root access to the host](https://www.lvh.io/posts/dont-expose-the-docker-socket-not-even-to-a-container.html).  Docker should not be your only defense.
 
-Likewise, if you expose the docker unix socket to a container, you are giving the container [root access to the host](https://www.lvh.io/posts/dont-expose-the-docker-socket-not-even-to-a-container.html).
+### Security Tips
+
+For greatest security, you want to run Docker inside a virtual machine.  This is straight from the Docker Security Team Lead -- [slides](http://www.slideshare.net/jpetazzo/linux-containers-lxc-docker-and-security) / [notes](http://www.projectatomic.io/blog/2014/08/is-it-safe-a-look-at-docker-and-security-from-linuxcon/).  Then, run with AppArmor / seccomp / SELinux / grsec etc to [limit the container permissions](http://linux-audit.com/docker-security-best-practices-for-your-vessel-and-containers/).  See the [Docker 1.10 security features](https://blog.docker.com/2016/02/docker-engine-1-10-security/) for more details.
 
 Docker image ids are [sensitive information](https://medium.com/@quayio/your-docker-image-ids-are-secrets-and-its-time-you-treated-them-that-way-f55e9f14c1a4) and should not be exposed to the outside world.  Treat them like passwords.
 
-See the [Docker Security Cheat Sheet](https://github.com/konstruktoid/Docker/blob/master/Security/CheatSheet.md) by [Thomas Sjögren](https://github.com/konstruktoid).
+See the [Docker Security Cheat Sheet](https://github.com/konstruktoid/Docker/blob/master/Security/CheatSheet.md) by [Thomas Sjögren](https://github.com/konstruktoid): some good stuff about container hardening in there.
+
+Check out the [docker bench security script](https://github.com/docker/docker-bench-security), download the [white papers](https://blog.docker.com/2015/05/understanding-docker-security-and-best-practices/) and subscribe to the [mailing lists](https://www.docker.com/docker-security) (unfortunately Docker does not have a unique mailing list, only dev / user).
+
+You should start off by using a kernel with unstable patches for grsecurity / pax compiled in, such as [Alpine Linux](https://en.wikipedia.org/wiki/Alpine_Linux).  If you are using grsecurity in production, you should spring for [commercial support](https://grsecurity.net/business_support.php) for the [stable patches](https://grsecurity.net/announce.php), same as you would do for RedHat.  It's $200 a month, which is nothing to your devops budget.
 
 From the [Docker Security Cheat Sheet](http://container-solutions.com/content/uploads/2015/06/15.06.15_DockerCheatSheet_A2.pdf) (it's in PDF which makes it hard to use, so copying below) by [Container Solutions](http://container-solutions.com/is-docker-safe-for-production/):
 
@@ -365,6 +428,22 @@ RUN groupadd -r user && useradd -r -g user user
 USER user
 ```
 
+### User Namespaces
+
+There's also work on [user namespaces](https://s3hh.wordpress.com/2013/07/19/creating-and-using-containers-without-privilege/) -- it is in 1.10 but is not enabled by default.
+
+To enable user namespaces ("remap the userns") in Ubuntu 15.10, [follow the blog example](https://raesene.github.io/blog/2016/02/04/Docker-User-Namespaces/).
+
+### Security Videos
+
+* [Using Docker Safely](https://youtu.be/04LOuMgNj9U)
+* [Securing your applications using Docker](https://youtu.be/KmxOXmPhZbk)
+* [Container security: Do containers actually contain?](https://youtu.be/a9lE9Urr6AQ)
+
+### Security Roadmap
+
+The Docker roadmap talks about [seccomp support](https://github.com/docker/docker/blob/master/ROADMAP.md#11-security).
+There is an AppArmor policy generator called [bane](https://github.com/jfrazelle/bane), and they're working on [security profiles](https://github.com/docker/docker/issues/17142).  
 
 ## Tips
 
@@ -392,13 +471,9 @@ docker commit -run='{"Cmd":["postgres", "-too -many -opts"]}' `dl` postgres
 docker inspect `dl` | grep IPAddress | cut -d '"' -f 4
 ```
 
-or
+or install [jq](https://stedolan.github.io/jq/):
 
 ```
-wget http://stedolan.github.io/jq/download/source/jq-1.3.tar.gz
-tar xzvf jq-1.3.tar.gz
-cd jq-1.3
-./configure && make && sudo make install
 docker inspect `dl` | jq -r '.[0].NetworkSettings.IPAddress'
 ```
 
@@ -474,10 +549,13 @@ docker images -viz | dot -Tpng -o docker.png
 
 ### Slimming down Docker containers  [Intercity Blog](http://bit.ly/1Wwo61N)
 
-- Cleaning APT
+- Cleaning APT in a RUN layer  
+This should be done in the same layer as other apt commands.  
+Otherwise, the previous layers still persist the original information and your images will still be fat.  
 ```
-RUN apt-get clean
-RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN {apt commands} \
+ && apt-get clean \  
+ && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 ```
 - Flatten an image
 ```
@@ -511,3 +589,23 @@ For all containers listed by name:
 ```
 docker stats $(docker ps --format '{{.Names}}')
 ```
+
+## Contributing
+
+Here's how to contribute to this cheat sheet.
+
+### Open README.md
+
+Click [README.md](https://github.com/wsargent/docker-cheat-sheet/blob/master/README.md) <-- this link
+
+![Click This](images/click.png)
+
+### Edit Page
+
+![Edit This](images/edit.png)
+
+### Make Changes and Commit
+
+![Change This](images/change.png)
+
+![Commit](images/commit.png)
